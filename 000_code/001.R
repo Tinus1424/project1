@@ -1,20 +1,22 @@
 library(tidyverse)
 library(janitor)
 library(readxl)
-library(MASS)
+
 
 setwd("~/1_r/project1/000_code")
 data_dir <- "../001_data/"
 
-#Import files
+# In- and outflow data for 2021, 22, and 23.
 odf21 <- read_xlsx(paste0(data_dir, "data2021.xlsx"))
 odf22 <- read_xlsx(paste0(data_dir, "data2022.xlsx"))
 odf23 <- read_xlsx(paste0(data_dir, "data2023.xlsx"))
 
+# Additional information for products
 odf <- read_xlsx(paste0(data_dir, "datavr.xlsx")) 
 
-# Function that widens the columns "mutatie_reden_omschrijving" and "relatiecode
-# _plaats" because they contain two values. If there are more than two 
+# Function that widens the columns "mutatie_reden_omschrijving" and 
+# "relatiecode_plaats" because they contain two values. 
+
 cleanread <- function(dfxx){
   janitor::clean_names(dfxx
   ) |>
@@ -33,12 +35,11 @@ cleanread <- function(dfxx){
     too_many = "merge"
   )}
 
-#Data cleaning
 df21 <- cleanread(odf21)
 df22 <- cleanread(odf22)
 df23 <- cleanread(odf23)
 
-#Stock dataset import and cleaning
+
 df <- odf |> 
   janitor::clean_names() |> 
   dplyr::select(
@@ -57,24 +58,39 @@ df <- odf |>
     "opruiming",
     "datum_voorraad_controle"
   )
+
+# Joining the datasets together to create dfv1, 3 years of in- outflow data +
+# additional information, join key = artikelcode
 df2122 <- full_join(df21, df22)
 dfv0 <- full_join(df2122, df23)
 dfv1 <- left_join(dfv0, df, by = "artikelcode")
 
-dfv1$mutatie_omschrijving <- if_else(is.na(dfv1$mutatie_omschrijving), "toename", dfv1$mutatie_omschrijving)
-dfv1$mutatie_omschrijving <- if_else(dfv1$mutatie_omschrijving == "(toename)", "toename", dfv1$mutatie_omschrijving)
-dfv1$mutatie_omschrijving <- if_else(dfv1$mutatie_omschrijving == "(afname)", "afname", dfv1$mutatie_omschrijving)                
-dfv1$mutatie_reden <- if_else(dfv1$mutatie_reden == "Voorraadverschil", "Voorraadmutatie", dfv1$mutatie_reden)
-dfv1$mutatie_reden <- if_else(dfv1$mutatie_reden == "Incourant", "Voorraadmutatie", dfv1$mutatie_reden)
-dfv1$relatiecode <- if_else(is.na(dfv1$relatiecode), "242", dfv1$relatiecode)
-dfv1$relatieplaats <- if_else(is.na(dfv1$relatieplaats), "Magazijn", dfv1$relatieplaats)
-dfv1$relatieplaats <- if_else(dfv1$relatiecode == 236, "Kassa", dfv1$relatieplaats)
+# Treating missing data and standardizing categorical values
+dfv1$mutatie_omschrijving <- 
+  if_else(is.na(dfv1$mutatie_omschrijving), "toename", dfv1$mutatie_omschrijving)
+dfv1$mutatie_omschrijving <- 
+  if_else(dfv1$mutatie_omschrijving == "(toename)", "toename", dfv1$mutatie_omschrijving)
+dfv1$mutatie_omschrijving <- 
+  if_else(dfv1$mutatie_omschrijving == "(afname)", "afname", dfv1$mutatie_omschrijving)                
+dfv1$mutatie_reden <- 
+  if_else(dfv1$mutatie_reden == "Voorraadverschil", "Voorraadmutatie", dfv1$mutatie_reden)
+dfv1$mutatie_reden <- 
+  if_else(dfv1$mutatie_reden == "Incourant", "Voorraadmutatie", dfv1$mutatie_reden)
+dfv1$relatiecode <- 
+  if_else(is.na(dfv1$relatiecode), "242", dfv1$relatiecode)
+dfv1$relatieplaats <- 
+  if_else(is.na(dfv1$relatieplaats), "Magazijn", dfv1$relatieplaats)
+dfv1$relatieplaats <- 
+  if_else(dfv1$relatiecode == 236, "Kassa", dfv1$relatieplaats)
 
+# Creating additional separate information about the datetime
 dfv1$weekdag <- wday(dfv1$datum, label = TRUE)
 dfv1$dag <- mday(dfv1$datum)
 dfv1$maand <- month(dfv1$datum)
 dfv1$jaar <- year(dfv1$datum) 
 
+# A data frame with SKUs and their stock level at the start of the first
+# year they appear in the data
 begin <- dfv1 |> 
   slice_head(by = artikelcode
              ) |> 
@@ -83,10 +99,7 @@ begin <- dfv1 |>
               ) |> 
   rename(begin = artikel_begin_stand)
 
-dfv1 <- left_join(dfv1, begin, by = "artikelcode")
-
-dfv1 <- dfv1 |> 
-  mutate(supply_at = cumsum(aantal) + begin, .by = "artikelcode")
-
-
-
+# This dataframe is then joined and used to calculate the stock level at any
+# given time in the data frame
+dfv1 <- left_join(dfv1, begin, by = "artikelcode")|> 
+  mutate(momentvoorraad = cumsum(aantal) + begin, .by = "artikelcode")
