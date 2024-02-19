@@ -1,0 +1,26 @@
+{
+    "id": "58F0C1FA",
+    "path": "~/1_r/project1/000_code/001.R",
+    "project_path": "000_code/001.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1707906658255.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "92,0",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1708352218,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1708352218106,
+    "read_only": false,
+    "read_only_alternatives": []
+}
