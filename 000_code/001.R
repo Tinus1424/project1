@@ -110,7 +110,9 @@ begin <- dfv1 |>
 dfv1 <- left_join(dfv1, begin, by = "artikelcode")|> 
   mutate(momentvoorraad = cumsum(aantal) + begin, .by = "artikelcode")
 
-# Creates the variable "cashflow", inflowing goods are multiplied by 
+# Creates the variable inflow and outflow, inflow is any action whereby money
+# is earned and outflow is any action whereby money is lost
+# All values are positive doubles
 dfv1 <- dfv1 |> 
   mutate(inflow =
            if_else(mutatie_reden == "Factuur" & aantal < 0,
