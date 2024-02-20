@@ -82,6 +82,12 @@ dfv1$relatieplaats <-
   if_else(is.na(dfv1$relatieplaats), "Magazijn", dfv1$relatieplaats)
 dfv1$relatieplaats <- 
   if_else(dfv1$relatiecode == 236, "Kassa", dfv1$relatieplaats)
+# Werkbon and pakbon are unrealized transactions and will thus not be included
+# in the dataset
+dfv1 <- dfv1 |> 
+  filter(!mutatie_reden == "Werkbon"
+         ) |> 
+  filter(!mutatie_reden == "Pakbon")
 
 # Creating additional separate information about the datetime
 dfv1$weekdag <- wday(dfv1$datum, label = TRUE)
@@ -103,3 +109,36 @@ begin <- dfv1 |>
 # given time in the data frame
 dfv1 <- left_join(dfv1, begin, by = "artikelcode")|> 
   mutate(momentvoorraad = cumsum(aantal) + begin, .by = "artikelcode")
+
+# Creates the variable "cashflow", inflowing goods are multiplied by 
+dfv1 <- dfv1 |> 
+  mutate(inflow =
+           if_else(mutatie_reden == "Factuur" & aantal < 0,
+                   aantal * (verkoop_prijs*-1),
+                   0
+                   )
+         )|> 
+  mutate(inflow =
+           if_else(mutatie_reden == "Voorraadmutatie" & aantal > 0,
+                   aantal * (inkoopprijs),
+                   inflow
+                   )
+         )|> 
+  mutate(outflow =
+           if_else(mutatie_reden == "Factuur" & aantal > 0,
+                   aantal * (verkoop_prijs),
+                   0
+                   )
+         ) |> 
+  mutate(outflow =
+           if_else(mutatie_reden == "Voorraadmutatie" & aantal < 0,
+                   aantal * (inkoopprijs*-1),
+                   outflow
+                   )
+         ) |> 
+  mutate(outflow =
+           if_else(mutatie_reden == "Ontvangst",
+                   aantal * (inkoopprijs),
+                   outflow
+                   )
+         )
